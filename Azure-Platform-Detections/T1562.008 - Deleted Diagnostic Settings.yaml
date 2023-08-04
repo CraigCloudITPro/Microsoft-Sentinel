@@ -1,0 +1,18 @@
+// T1562.008 - Deleted Diagnostic Settings
+// Defense Evasion
+// Impact Defenses: Disable Cloud Logs
+
+// Azure Diagnostic settings removed from a resource
+
+//This query looks for diagnostic settings that are removed from a resource.
+//  This could indicate an attacker or malicious internal trying to evade detection before malicious act is performed.
+
+
+AzureActivity
+| where OperationNameValue =~ "MICROSOFT.INSIGHTS/DIAGNOSTICSETTINGS/DELETE"
+| summarize
+    TimeGenerated = arg_max(TimeGenerated, Properties),
+    ActivityStatusValue = make_set(ActivityStatusValue, 5),
+    take_any(Caller, CallerIpAddress, OperationName, ResourceGroup, Resource)
+    by CorrelationId, _ResourceId, OperationNameValue
+| extend ResourceHierarchy = split(_ResourceId, "/")

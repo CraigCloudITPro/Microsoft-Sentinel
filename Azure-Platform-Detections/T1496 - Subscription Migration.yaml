@@ -1,0 +1,11 @@
+// Impact 
+// Resource Hijacking
+// T1496 - Subscription Migration
+// 
+
+//This detection uses AzureActivity logs (Security category) to identify when a subscription is moved to another tenant.
+//A threat actor may move a subscription into their own tenant to circumvent local resource deployment and logging policies.
+
+AzureActivity
+| where CategoryValue =~ "Security"
+| where OperationNameValue =~ "Microsoft.Subscription/updateTenant/action"

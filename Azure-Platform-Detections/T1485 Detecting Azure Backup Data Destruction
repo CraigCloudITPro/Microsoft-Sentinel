@@ -1,0 +1,12 @@
+// Impact
+//T1485 Detecting Azure Backup Data Destruction
+
+AzureActivity
+| where ResourceProviderValue == "MICROSOFT.RECOVERYSERVICES" and OperationNameValue contains "Delete" 
+| where Caller != "Microsoft.RecoveryServices"
+| where parse_json(Properties).activitySubstatusValue == "Accepted"
+| where parse_json(Authorization).action == "Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers/protectedItems/delete"
+| extend VM = split(Properties_d.resource, ";")
+| mv-expand VM // now we need to move each value into it's own retrospective column
+| where VM != "VM" and VM !contains "iaasvmcontainer" and VM !contains "RG" and VM !contains "vm" 
+| where parse_json(Properties).activitySubstatusValue == "Accepted"

@@ -1,0 +1,26 @@
+// T1046 - Azure Firewall Port Canning
+// Discovery
+// Network Discovery Service
+//Identifies a source IP scanning multiple open ports on Azure Firewall. This can indicate malicious scanning of ports by an attacker, trying to reveal open ports in the organization that can be compromised for initial access.
+
+//  Configurable Parameters:
+
+//  - Port scan time - the time range to look for multiple ports scanned. Default is set to 30 seconds.
+//  - Minimum different ports threshold - alert only if more than this number of ports scanned. Default is set to 100.'
+
+let MinimumDifferentPortsThreshold = 100;
+let BinTime = 30s;
+union isfuzzy=true(
+AZFWApplicationRule
+| summarize AlertTimedCountPortsInBinTime = dcount(DestinationPort) by SourceIp, bin(TimeGenerated, BinTime), Fqdn
+| where AlertTimedCountPortsInBinTime > MinimumDifferentPortsThreshold),
+(AZFWNetworkRule
+| extend Fqdn = DestinationIp
+| summarize AlertTimedCountPortsInBinTime = dcount(DestinationPort) by SourceIp, bin(TimeGenerated, BinTime), Fqdn
+| where AlertTimedCountPortsInBinTime > MinimumDifferentPortsThreshold),
+(AzureDiagnostics
+| where OperationName == "AzureFirewallApplicationRuleLog" or OperationName == "AzureFirewallNetworkRuleLog"
+| parse msg_s with * "from " SourceIp ":" SourcePort:int " to " Fqdn ":" DestinationPort:int
+| where isnotempty(Fqdn) and isnotempty(SourceIp)
+| summarize AlertTimedCountPortsInBinTime = dcount(DestinationPort) by SourceIp, bin(TimeGenerated, BinTime), Fqdn
+| where AlertTimedCountPortsInBinTime > MinimumDifferentPortsThreshold)

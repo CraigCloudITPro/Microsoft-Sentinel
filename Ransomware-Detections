@@ -1,0 +1,22 @@
+let timeRange = 1d; // Specify the time range for your query
+
+// Identify potential ransomware activities
+let potentialRansomwareActivities = SecurityEvent
+| where TimeGenerated >= ago(timeRange)
+| where EventID == 4663 // Modify this for your specific environment if needed
+
+// Filter for actions related to file encryption
+| where (Action == "FILE_WRITE" or Action == "FILE_CREATE") and
+(FileName contains ".encrypted" or FileName contains ".locky" or FileName contains ".cerber") // Modify this for known ransomware file patterns
+
+// Group and count activities by computer
+| summarize RansomwareCount=count() by Computer
+
+// Set a threshold for detection
+| where RansomwareCount >= 5; // Adjust the threshold as needed
+
+// Display the results
+potentialRansomwareActivities
+| project TimeGenerated, Computer, RansomwareCount
+
+// Here’s what this KQL script does:1. It defines a time range for your query (in this example, 1 day). You can adjust the timeRange variable to suit your needs. 2. It identifies potential ransomware activities by querying the SecurityEvent table. The example uses Event ID 4663, which is commonly associated with file access events. 3. It further filters these events to focus on actions related to file encryption. You can modify the conditions in the where clause to match known ransomware file patterns. In this example, it’s looking for files with extensions like “.encrypted,” “.locky,” or “.cerber.” 4. It groups and counts these activities by the affected computer. 5. A threshold for detection is set. In this example, it’s set to trigger if there are at least 5 suspicious activities within the specified time range. 6. Finally, it displays the results, showing the timestamp, affected computer, and the count of potential ransomware activities.

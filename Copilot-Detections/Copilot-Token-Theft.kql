@@ -1,0 +1,20 @@
+let AnomalousTokenRequestId=
+SecurityAlert
+| where TimeGenerated > ago(30d)
+| where AlertName == "Anomalous Token"
+| mv-expand todynamic(Entities)
+| project Entities
+| extend RequestId = tostring(Entities.RequestId)
+| distinct RequestId;
+let CopilotClientIP=
+SigninLogs
+| where TimeGenerated > ago(30d)
+| where AppDisplayName contains "copilot"
+| distinct IPAddress;
+AADUserRiskEvents
+| where TimeGenerated > ago(30d)
+| where RequestId has_any(AnomalousTokenRequestId)
+| where IpAddress has_any(CopilotClientIP) 
+| project TimeGenerated, UserPrincipalName, RiskEventType, RiskLevel, DetectionTimingType, IpAddress, Location
+
+// Detect token theft via AiTM phishing attack whereby token is then used to conduct copilot activities for data summarization and extraction.

@@ -1,0 +1,11 @@
+let CopilotIPs =
+MicrosoftGraphActivityLogs
+| where TimeGenerated > ago(30d)
+| where RequestUri contains "Microsoft365Copilot@communication.microsoft.com"
+| distinct IPAddress;
+SigninLogs
+| where TimeGenerated > ago(30d)
+| where RiskEventTypes contains "maliciousIPAddress" 
+| where IPAddress has_any (CopilotIPs)
+
+//Detect malicious Copilot external data search via Microsoft Graph Connectors. This detection is useful when your Copilot has external plugin enabled and access external corporate data via plugin through graph connectors.

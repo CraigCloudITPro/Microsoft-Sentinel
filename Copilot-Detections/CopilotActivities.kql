@@ -1,0 +1,16 @@
+CloudAppEvents
+| where ActionType == @"CopilotInteraction"
+| extend UserID = tostring(RawEventData.UserId)
+| extend CopilotData = todynamic(RawEventData.CopilotEventData)
+| extend CopilotAccessResources = (CopilotData.AccessedResources)
+| extend CopilotAppHost = tostring(CopilotData.AppHost)
+| extend CopilotContexts = tostring(CopilotData.Contexts)
+| extend CopilotType = tostring(CopilotData.Type)
+| extend CopilotMessageIds = tostring(CopilotData.MessageIds)
+| extend CopilotThreadId = tostring(CopilotData.ThreadId)
+| project Timestamp, UserID, CopilotAccessResources, CopilotAppHost, 
+CopilotContexts, CopilotType, CopilotMessageIds, CopilotThreadId
+// Copilot Interaction Data Formatted
+// Insert your hunting query for copilot related activities.
+
+// With the above KQL query, SecOps teams is able to threat hunt Copilot activities happening in the M365 Chat, Word, Outlook, Teams, Excel, Powerpoint, OneNote, Whiteboard and Plugin in the event of a compromised user credentials that lead to unauthorized copilot activities.

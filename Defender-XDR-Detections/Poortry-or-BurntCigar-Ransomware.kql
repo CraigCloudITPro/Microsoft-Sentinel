@@ -1,0 +1,50 @@
+//1. Detection of Suspicious Driver Loading
+//This query checks for unusual driver loads, particularly those not commonly seen in your environment, which could indicate the presence of a signed malicious driver like Poortry.
+
+DeviceFileEvents
+| where ActionType == "DriverLoad"
+| where FileName has_any("sys", "dll")
+| where SHA1 in ("a804ebec7e341b4d98d9e94f6e4860a55ea1638d", "9b1b15a3aacb0e786a608726c3abfc94968915cedcbd239ddf903c4a54bfcf0c")
+| summarize Count=count(), FirstSeen=min(Timestamp), LastSeen=max(Timestamp) by FileName, SHA1, InitiatingProcessAccountName
+| sort by Count desc
+
+//2. Hunting for Process Termination Commands
+//Poortry has the ability to terminate processes via specific IOCTL calls. This query hunts for patterns indicative of such activities.
+
+DeviceProcessEvents
+| where ProcessCommandLine has "ZwTerminateProcess"
+| where InitiatingProcessFileName == "System" // System processes might initiate these commands under duress from a malicious driver
+| summarize Count=count(), FirstSeen=min(Timestamp), LastSeen=max(Timestamp) by InitiatingProcessAccountName, ProcessCommandLine
+| sort by Count desc
+
+//3. Suspicious File Manipulation Activity
+// Detect potential file tampering that could be linked to the Poortry toolkit, particularly focusing on file overwrites or deletions.
+
+DeviceFileEvents
+| where ActionType in ("FileDeleted", "FileOverwritten")
+| where FileName endswith ".sys" or FileName endswith ".dll"
+| where InitiatingProcessFileName == "stonestop.exe"
+| summarize Count=count(), FirstSeen=min(Timestamp), LastSeen=max(Timestamp) by FileName, InitiatingProcessAccountName
+| sort by Count desc
+
+
+//4. Detection of Configuration File Integrity Checks
+// Poortry’s STONESTOP component checks the integrity of its configuration files. Monitoring for such file access patterns could indicate the toolkit’s presence.
+
+DeviceFileEvents
+| where FolderPath endswith "pdata"
+| where InitiatingProcessFileName == "stonestop.exe"
+| summarize Count=count(), FirstSeen=min(Timestamp), LastSeen=max(Timestamp) by FileName, InitiatingProcessAccountName
+| sort by Count desc
+
+
+// 5. Monitoring for Kernel-Level Anomalies
+// Due to Poortry’s rootkit-like behavior, monitoring kernel-level anomalies such as unusual API calls or memory manipulations can be crucial.
+
+DeviceEvents
+| where ActionType == "KernelEvent"
+| where EventData contains "API" and EventData contains_any ("Zw", "PsSuspendProcess", "PsResumeProcess")
+| summarize Count=count(), FirstSeen=min(Timestamp), LastSeen=max(Timestamp) by InitiatingProcessFileName, EventData
+| sort by Count desc
+
+

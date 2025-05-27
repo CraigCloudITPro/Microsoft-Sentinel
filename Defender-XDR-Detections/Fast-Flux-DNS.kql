@@ -1,0 +1,40 @@
+// High Frequency IP Address Rotation Detection
+// MITRE Mapping:
+// T1568.001 – Dynamic Resolution
+
+DnsEvents
+| where TimeGenerated between (ago(1d)..now())
+| summarize IPCount = dcount(IPAddresses), EventCount = count() by Name
+| where IPCount > 10 and EventCount > 50
+| order by IPCount desc
+
+// Geolocation Mismatch Detection
+// MITRE Mapping:
+// T1568.001 – Dynamic Resolution
+
+DnsEvents
+| where TimeGenerated between (ago(1d)..now())
+| summarize CountryCount = dcount(RemoteIPCountry), IPCount = dcount(IPAddresses) by Name
+| where CountryCount > 5 and IPCount > 10
+| order by CountryCount desc
+
+// Suspicious DNS Query Types
+// MITRE Mapping:
+// T1568.001 – Dynamic Resolution
+
+DnsEvents
+| where TimeGenerated between (ago(1d)..now())
+| where QueryType in ("CNAME", "NS")
+| summarize RecordCount = count() by Name, QueryType
+| where RecordCount > 20
+| order by RecordCount desc
+
+// Known Malicious Domain Monitoring
+// MITRE Mapping:
+// T1568.001 – Dynamic Resolution
+
+let known_bad_domains = dynamic(["examplemalicious.com", "badfluxdomain.net", "fluxexample.org"]);
+DnsEvents
+| where Name in (known_bad_domains)
+| summarize EventCount = count() by Name
+| order by EventCount desc
